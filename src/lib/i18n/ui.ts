@@ -62,7 +62,8 @@ type UiKey =
   | "livePreviewHint"
   | "baseItemsTitle"
   | "baseItemsSubtotal"
-  | "baseItemsDiscountNote"
+  | "baseItemsPolicyNote"
+  | "baseItemFree"
   | "treatmentSubtotal"
   | "quoteDate"
   | "quoteValidityNotice";
@@ -132,8 +133,9 @@ const UI: Record<Locale, Record<UiKey, string>> = {
     livePreviewHint: "선택 즉시 우측 예상 영수증에 반영됩니다.",
     baseItemsTitle: "기본 포함 항목",
     baseItemsSubtotal: "기본항목 합계",
-    baseItemsDiscountNote:
-      "※ 총 견적(시술 정상가) 1천만원 이상 시 기본항목 30% 할인이 적용되었습니다.",
+    baseItemsPolicyNote:
+      "※ 시술 정상가 합계 500만원~1,000만원: 검사·통역 무료 / 1,000만원 이상: 기본항목 전체 무료",
+    baseItemFree: "무료",
     treatmentSubtotal: "시술 공급가액",
     quoteDate: "견적 일자",
     quoteValidityNotice:
@@ -202,8 +204,9 @@ const UI: Record<Locale, Record<UiKey, string>> = {
     livePreviewHint: "Updates the receipt on the right instantly.",
     baseItemsTitle: "Included Base Services",
     baseItemsSubtotal: "Base Services Subtotal",
-    baseItemsDiscountNote:
-      "※ 30% discount on base services applied (treatment list price ≥ ₩10M).",
+    baseItemsPolicyNote:
+      "※ Treatment list price ₩5M–₩10M: exam & interpretation free / ₩10M+: all base services free",
+    baseItemFree: "Free",
     treatmentSubtotal: "Treatment Subtotal",
     quoteDate: "Quote Date",
     quoteValidityNotice:
@@ -271,8 +274,9 @@ const UI: Record<Locale, Record<UiKey, string>> = {
     livePreviewHint: "選択すると右側の見積にすぐ反映されます。",
     baseItemsTitle: "基本含まれる項目",
     baseItemsSubtotal: "基本項目合計",
-    baseItemsDiscountNote:
-      "※ 総見積（施術定価）1千万ウォン以上で基本項目30%割引が適用されました。",
+    baseItemsPolicyNote:
+      "※ 施術定価合計500万〜1,000万ウォン：検査・通訳無料 / 1,000万ウォン以上：基本項目すべて無料",
+    baseItemFree: "無料",
     treatmentSubtotal: "施術供給価額",
     quoteDate: "見積日",
     quoteValidityNotice:
@@ -340,8 +344,9 @@ const UI: Record<Locale, Record<UiKey, string>> = {
     livePreviewHint: "选择后立即反映在右侧收据中。",
     baseItemsTitle: "基本包含项目",
     baseItemsSubtotal: "基本项目合计",
-    baseItemsDiscountNote:
-      "※ 总报价（疗程原价）达1千万韩元以上，基本项目享30%折扣。",
+    baseItemsPolicyNote:
+      "※ 疗程原价合计500万~1,000万韩元：检查·翻译免费 / 1,000万韩元以上：全部基本项目免费",
+    baseItemFree: "免费",
     treatmentSubtotal: "疗程供应价额",
     quoteDate: "报价日期",
     quoteValidityNotice: "※ 本报价可能因汇率变动或疗程构成变化而调整。",
@@ -412,8 +417,9 @@ const UI: Record<Locale, Record<UiKey, string>> = {
     livePreviewHint: "อัปเดตใบเสร็จทางขวาทันทีเมื่อเลือก",
     baseItemsTitle: "บริการพื้นฐานที่รวม",
     baseItemsSubtotal: "รวมบริการพื้นฐาน",
-    baseItemsDiscountNote:
-      "※ ส่วนลดบริการพื้นฐาน 30% เมื่อยอดเสนอราคารวม (ราคาปกติ) ตั้งแต่ 10 ล้านวอน",
+    baseItemsPolicyNote:
+      "※ ราคาปกติหัตถการรวม 5–10 ล้านวอน: ตรวจ·ล่ามฟรี / 10 ล้านวอนขึ้นไป: บริการพื้นฐานทั้งหมดฟรี",
+    baseItemFree: "ฟรี",
     treatmentSubtotal: "มูลค่าจัดหาหัตถการ",
     quoteDate: "วันที่เสนอราคา",
     quoteValidityNotice:

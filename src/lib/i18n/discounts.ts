@@ -55,8 +55,8 @@ export function translateDiscountLine(
       };
     case "base_items":
       return {
-        label: `✔ ${getBaseItemsLabel(locale)}`,
-        condition: getBaseItemsCondition(locale),
+        label: `✔ ${getBaseItemsLabel(locale, String(params.tier))}`,
+        condition: getBaseItemsCondition(locale, String(params.tier)),
       };
     default:
       return { label: line.label, condition: "" };
@@ -75,7 +75,7 @@ function getDiscountConditionKo(line: DiscountLine): string {
     case "first_visit":
       return `첫 방문 체크 시 미번들 최저가 시술(${params.treatment}) 1회 50% 할인.`;
     case "base_items":
-      return "시술 정상가 합계가 1천만원 이상일 때 기본항목 30% 할인 적용.";
+      return "시술 정상가 합계 500만원 이상 시 검사·통역 무료, 1천만원 이상 시 기본항목 전체 무료.";
     default:
       return "";
   }
@@ -158,26 +158,56 @@ function getFirstVisitLabel(locale: Locale, treatment: string): string {
   return labels[locale];
 }
 
-function getBaseItemsLabel(locale: Locale): string {
-  const labels: Record<Locale, string> = {
-    ko: "기본항목 할인 (총 견적 1천만원 이상 30%)",
-    en: "Base services discount (≥₩10M quote, 30%)",
-    ja: "基本項目割引（総見積1千万ウォン以上30%）",
-    zh: "基本项目折扣（总报价≥1千万韩元，30%）",
-    th: "ส่วนลดบริการพื้นฐาน (ยอดรวม ≥10ล้านวอน 30%)",
+function getBaseItemsLabel(locale: Locale, tier: string): string {
+  const labels: Record<Locale, Record<string, string>> = {
+    ko: {
+      partial: "기본항목 일부 무료 (검사·통역)",
+      full: "기본항목 전체 무료",
+    },
+    en: {
+      partial: "Partial base services free (exam & interpretation)",
+      full: "All base services free",
+    },
+    ja: {
+      partial: "基本項目一部無料（検査・通訳）",
+      full: "基本項目すべて無料",
+    },
+    zh: {
+      partial: "部分基本项目免费（检查·翻译）",
+      full: "全部基本项目免费",
+    },
+    th: {
+      partial: "บริการพื้นฐานบางรายการฟรี (ตรวจ·ล่าม)",
+      full: "บริการพื้นฐานทั้งหมดฟรี",
+    },
   };
-  return labels[locale];
+  return labels[locale][tier] ?? tier;
 }
 
-function getBaseItemsCondition(locale: Locale): string {
-  const labels: Record<Locale, string> = {
-    ko: "시술 정상가 합계가 1천만원 이상일 때 검사·통역·공항 픽업·비타민 주사에 30% 할인 적용.",
-    en: "30% off exam, interpretation, airport pickup, and vitamin injection when treatment list price ≥ ₩10M.",
-    ja: "施術定価合計が1千万ウォン以上の場合、基本4項目に30%割引。",
-    zh: "疗程原价合计达1千万韩元以上时，基本4项享30%折扣。",
-    th: "เมื่อราคาปกติหัตถการรวม ≥10 ล้านวอน ลดบริการพื้นฐาน 4 รายการ 30%",
+function getBaseItemsCondition(locale: Locale, tier: string): string {
+  const labels: Record<Locale, Record<string, string>> = {
+    ko: {
+      partial: "시술 정상가 합계 500만원 이상 1,000만원 미만일 때 검사·통역 무료.",
+      full: "시술 정상가 합계 1,000만원 이상일 때 기본항목 전체 무료.",
+    },
+    en: {
+      partial: "Exam and interpretation are free when treatment list price is ₩5M–₩10M.",
+      full: "All base services are free when treatment list price is ₩10M or more.",
+    },
+    ja: {
+      partial: "施術定価合計が500万ウォン以上1,000万ウォン未満の場合、検査・通訳無料。",
+      full: "施術定価合計が1,000万ウォン以上の場合、基本項目すべて無料。",
+    },
+    zh: {
+      partial: "疗程原价合计500万~1,000万韩元时，检查·翻译免费。",
+      full: "疗程原价合计达1,000万韩元以上时，全部基本项目免费。",
+    },
+    th: {
+      partial: "ราคาปกติหัตถการรวม 5–10 ล้านวอน ตรวจ·ล่ามฟรี",
+      full: "ราคาปกติหัตถการรวมตั้งแต่ 10 ล้านวอน บริการพื้นฐานทั้งหมดฟรี",
+    },
   };
-  return labels[locale];
+  return labels[locale][tier] ?? "";
 }
 
 export function getDiscountSectionTitle(locale: Locale): string {

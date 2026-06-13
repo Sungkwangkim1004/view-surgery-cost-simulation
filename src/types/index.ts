@@ -33,6 +33,8 @@ export interface BaseItemLine {
   id: string;
   name: string;
   price: number;
+  originalPrice: number;
+  isFree: boolean;
 }
 
 export interface PriceBreakdown {
@@ -63,6 +65,7 @@ export interface PriceBreakdown {
   baseItemsDiscount: number;
   baseItemsTotal: number;
   baseItemsDiscountApplied: boolean;
+  baseItemsFreeTier: "none" | "partial" | "full";
   supplyAmount: number;
   vat: number;
   finalTotal: number;

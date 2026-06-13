@@ -201,9 +201,9 @@ export function FinalQuoteDialog({
                 {formatKRW(breakdown.baseItemsTotal)}
               </span>
             </div>
-            {breakdown.baseItemsDiscountApplied && (
+            {breakdown.baseItems.length > 0 && (
               <p className="text-xs text-violet-600">
-                {t("baseItemsDiscountNote", locale)}
+                {t("baseItemsPolicyNote", locale)}
               </p>
             )}
             <div className="flex items-center justify-between gap-3 border-t border-blue-100 pt-2 text-sm">

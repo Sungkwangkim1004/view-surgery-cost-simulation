@@ -43,7 +43,18 @@ export function BaseItemsSection({
             className="flex items-center justify-between gap-3 text-sm text-violet-700"
           >
             <span>{translateEntity(item.name, locale)}</span>
-            <span className="shrink-0 font-medium">{formatKRW(item.price)}</span>
+            {item.isFree ? (
+              <span className="shrink-0 font-medium text-emerald-600">
+                <span className="mr-1.5 text-xs text-violet-400 line-through">
+                  {formatKRW(item.originalPrice)}
+                </span>
+                {t("baseItemFree", locale)}
+              </span>
+            ) : (
+              <span className="shrink-0 font-medium">
+                {formatKRW(item.price)}
+              </span>
+            )}
           </li>
         ))}
       </ul>
@@ -53,11 +64,9 @@ export function BaseItemsSection({
           {formatKRW(breakdown.baseItemsTotal)}
         </span>
       </div>
-      {breakdown.baseItemsDiscountApplied && (
-        <p className="mt-2 text-xs leading-relaxed text-violet-600">
-          {t("baseItemsDiscountNote", locale)}
-        </p>
-      )}
+      <p className="mt-2 text-xs leading-relaxed text-violet-600">
+        {t("baseItemsPolicyNote", locale)}
+      </p>
     </div>
   );
 }

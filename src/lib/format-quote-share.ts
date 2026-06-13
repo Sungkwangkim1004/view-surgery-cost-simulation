@@ -80,16 +80,15 @@ export function formatQuoteShareText({
     lines.push("");
     lines.push(`■ ${t("baseItemsTitle", locale)}`);
     for (const item of breakdown.baseItems) {
-      lines.push(
-        `- ${translateEntity(item.name, locale)}: ${formatKRW(item.price)}`
-      );
+      const priceLabel = item.isFree
+        ? `${t("baseItemFree", locale)} (${formatKRW(item.originalPrice)})`
+        : formatKRW(item.price);
+      lines.push(`- ${translateEntity(item.name, locale)}: ${priceLabel}`);
     }
     lines.push(
       `- ${t("baseItemsSubtotal", locale)}: ${formatKRW(breakdown.baseItemsTotal)}`
     );
-    if (breakdown.baseItemsDiscountApplied) {
-      lines.push(`  ${t("baseItemsDiscountNote", locale)}`);
-    }
+    lines.push(`  ${t("baseItemsPolicyNote", locale)}`);
   }
 
   if (breakdown.discountLines.length > 0) {

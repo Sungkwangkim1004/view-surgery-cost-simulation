@@ -1,8 +1,9 @@
 import {
   BASE_ITEM_NAMES,
   BASE_ITEM_PRICE,
-  BASE_ITEMS_DISCOUNT_RATE,
-  BASE_ITEMS_DISCOUNT_THRESHOLD,
+  getBaseItemsFreeTier,
+  isBaseItemFree,
+  type BaseItemName,
 } from "@/lib/base-items";
 import { bundlesDB } from "@/lib/data";
 import type { CartItem, DiscountLine, PriceBreakdown } from "@/types";
@@ -61,6 +62,7 @@ function emptyBreakdown(): PriceBreakdown {
     baseItemsDiscount: 0,
     baseItemsTotal: 0,
     baseItemsDiscountApplied: false,
+    baseItemsFreeTier: "none",
     supplyAmount: 0,
     vat: 0,
     finalTotal: 0,
@@ -120,19 +122,24 @@ function matchBundles(workingItems: WorkingItem[]) {
 }
 
 function calculateBaseItems(originalTotal: number) {
-  const baseItems = BASE_ITEM_NAMES.map((name, index) => ({
-    id: `base-${index}`,
-    name,
-    price: BASE_ITEM_PRICE,
-  }));
+  const baseItemsFreeTier = getBaseItemsFreeTier(originalTotal);
+
+  const baseItems = BASE_ITEM_NAMES.map((name, index) => {
+    const originalPrice = BASE_ITEM_PRICE;
+    const free = isBaseItemFree(name as BaseItemName, baseItemsFreeTier);
+    return {
+      id: `base-${index}`,
+      name,
+      price: free ? 0 : BASE_ITEM_PRICE,
+      originalPrice,
+      isFree: free,
+    };
+  });
 
   const baseItemsOriginalTotal = BASE_ITEM_PRICE * BASE_ITEM_NAMES.length;
-  const baseItemsDiscountApplied =
-    originalTotal >= BASE_ITEMS_DISCOUNT_THRESHOLD;
-  const baseItemsDiscount = baseItemsDiscountApplied
-    ? Math.round(baseItemsOriginalTotal * BASE_ITEMS_DISCOUNT_RATE)
-    : 0;
-  const baseItemsTotal = baseItemsOriginalTotal - baseItemsDiscount;
+  const baseItemsTotal = baseItems.reduce((sum, item) => sum + item.price, 0);
+  const baseItemsDiscount = baseItemsOriginalTotal - baseItemsTotal;
+  const baseItemsDiscountApplied = baseItemsFreeTier !== "none";
 
   return {
     baseItems,
@@ -140,6 +147,7 @@ function calculateBaseItems(originalTotal: number) {
     baseItemsDiscount,
     baseItemsTotal,
     baseItemsDiscountApplied,
+    baseItemsFreeTier,
   };
 }
 
@@ -255,14 +263,20 @@ export function calculatePrice(
     baseItemsDiscount,
     baseItemsTotal,
     baseItemsDiscountApplied,
+    baseItemsFreeTier,
   } = calculateBaseItems(originalTotal);
 
   if (baseItemsDiscount > 0) {
+    const label =
+      baseItemsFreeTier === "full"
+        ? "✔️ 기본항목 무료 (총 견적 1천만원 이상)"
+        : "✔️ 기본항목 일부 무료 (검사·통역, 총 견적 500만원 이상)";
+
     discountLines.push({
       id: "base_items",
-      label: "✔️ 기본항목 할인 (총 견적 1천만원 이상 30%)",
+      label,
       amount: baseItemsDiscount,
-      params: { threshold: BASE_ITEMS_DISCOUNT_THRESHOLD },
+      params: { tier: baseItemsFreeTier },
     });
   }
 
@@ -286,6 +300,7 @@ export function calculatePrice(
     baseItemsDiscount,
     baseItemsTotal,
     baseItemsDiscountApplied,
+    baseItemsFreeTier,
     supplyAmount,
     vat,
     finalTotal,
