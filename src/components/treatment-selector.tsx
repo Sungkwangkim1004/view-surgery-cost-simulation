@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus, ShoppingCart } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ShoppingCart } from "lucide-react";
+import { LanguageSelector } from "@/components/language-selector";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,19 +25,36 @@ import {
   getTreatmentsByCategory,
   getTreatmentByName,
 } from "@/lib/data";
+import { translateEntity } from "@/lib/i18n/entities";
+import { t } from "@/lib/i18n/ui";
 import { formatKRW, cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
-import type { Department } from "@/types";
+import { useLocaleStore } from "@/store/locale-store";
+import type { CartItem, Department } from "@/types";
 
 const DEPARTMENTS: Department[] = ["성형외과", "피부과"];
 
+function buildCartItem(
+  treatment: NonNullable<ReturnType<typeof getTreatmentByName>>,
+  sessions: number
+): Omit<CartItem, "id"> {
+  return {
+    department: treatment.department,
+    treatmentName: treatment.name,
+    category: treatment.category,
+    basePrice: treatment.base_price,
+    sessions,
+  };
+}
+
 export function TreatmentSelector() {
+  const { locale } = useLocaleStore();
   const [department, setDepartment] = useState<Department | "">("");
   const [category, setCategory] = useState<string>("");
   const [treatmentName, setTreatmentName] = useState<string>("");
   const [sessions, setSessions] = useState<number>(1);
 
-  const { addItem, isFirstVisit, setFirstVisit } = useCartStore();
+  const { syncItem, isFirstVisit, setFirstVisit, items } = useCartStore();
 
   const categories = useMemo(
     () => (department ? getCategoriesByDepartment(department) : []),
@@ -55,50 +73,83 @@ export function TreatmentSelector() {
     ? getTreatmentByName(treatmentName)
     : undefined;
 
+  const pushToCart = (
+    treatment: NonNullable<ReturnType<typeof getTreatmentByName>>,
+    nextSessions: number
+  ) => {
+    syncItem(buildCartItem(treatment, nextSessions));
+  };
+
   const handleDepartmentChange = (value: Department) => {
     setDepartment(value);
     setCategory("");
     setTreatmentName("");
+    setSessions(1);
   };
 
   const handleCategoryChange = (value: string) => {
     setCategory(value);
     setTreatmentName("");
-  };
-
-  const handleAddToCart = () => {
-    if (!selectedTreatment || !department) return;
-
-    addItem({
-      department: selectedTreatment.department,
-      treatmentName: selectedTreatment.name,
-      category: selectedTreatment.category,
-      basePrice: selectedTreatment.base_price,
-      sessions,
-    });
-
     setSessions(1);
   };
+
+  const handleTreatmentChange = (value: string) => {
+    setTreatmentName(value);
+    const treatment = getTreatmentByName(value);
+    if (!treatment || !department) return;
+
+    const existingSessions =
+      items.find((item) => item.treatmentName === value)?.sessions ?? 1;
+
+    setSessions(existingSessions);
+    pushToCart(treatment, existingSessions);
+  };
+
+  const handleSessionsChange = (rawValue: string) => {
+    const nextSessions = Math.max(1, parseInt(rawValue, 10) || 1);
+    setSessions(nextSessions);
+
+    if (selectedTreatment && department) {
+      pushToCart(selectedTreatment, nextSessions);
+    }
+  };
+
+  useEffect(() => {
+    if (!treatmentName) return;
+
+    const cartItem = items.find((item) => item.treatmentName === treatmentName);
+    if (cartItem && cartItem.sessions !== sessions) {
+      setSessions(cartItem.sessions);
+    }
+  }, [items, treatmentName, sessions]);
+
+  const departmentLabel = (dept: Department) =>
+    dept === "성형외과" ? t("plasticSurgery", locale) : t("dermatology", locale);
 
   return (
     <Card className="w-full overflow-visible border-slate-200 shadow-lg">
       <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-        <CardTitle className="flex items-center gap-2 text-lg text-slate-800 sm:text-xl">
-          <ShoppingCart className="h-5 w-5 shrink-0 text-blue-600" />
-          시술 선택
-        </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">
-          진료과 → 카테고리 → 시술 순으로 선택한 뒤 장바구니에 담아보세요.
-        </CardDescription>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2 text-lg text-slate-800 sm:text-xl">
+              <ShoppingCart className="h-5 w-5 shrink-0 text-blue-600" />
+              {t("treatmentSelection", locale)}
+            </CardTitle>
+            <CardDescription className="mt-1 text-xs sm:text-sm">
+              {t("treatmentSelectionDesc", locale)}
+            </CardDescription>
+          </div>
+          <LanguageSelector />
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-5 pt-6 sm:space-y-6">
         <div className="space-y-3">
-          <Label className="text-sm font-medium">진료과 (Department)</Label>
+          <Label className="text-sm font-medium">{t("department", locale)}</Label>
           <div
             className="grid grid-cols-2 gap-3"
             role="radiogroup"
-            aria-label="진료과 선택"
+            aria-label={t("department", locale)}
           >
             {DEPARTMENTS.map((dept) => {
               const isSelected = department === dept;
@@ -117,7 +168,7 @@ export function TreatmentSelector() {
                   )}
                   onClick={() => handleDepartmentChange(dept)}
                 >
-                  {dept}
+                  {departmentLabel(dept)}
                 </Button>
               );
             })}
@@ -126,7 +177,7 @@ export function TreatmentSelector() {
 
         <div className="space-y-2">
           <Label htmlFor="category" className="text-sm font-medium">
-            카테고리
+            {t("category", locale)}
           </Label>
           <Select
             value={category || undefined}
@@ -134,12 +185,12 @@ export function TreatmentSelector() {
             disabled={!department}
           >
             <SelectTrigger id="category" className="w-full">
-              <SelectValue placeholder="카테고리를 선택하세요" />
+              <SelectValue placeholder={t("categoryPlaceholder", locale)} />
             </SelectTrigger>
             <SelectContent>
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>
-                  {cat}
+                  {translateEntity(cat, locale)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -148,21 +199,22 @@ export function TreatmentSelector() {
 
         <div className="space-y-2">
           <Label htmlFor="treatment" className="text-sm font-medium">
-            시술
+            {t("treatment", locale)}
           </Label>
           <Select
             value={treatmentName || undefined}
-            onValueChange={setTreatmentName}
+            onValueChange={handleTreatmentChange}
             disabled={!category}
           >
             <SelectTrigger id="treatment" className="w-full">
-              <SelectValue placeholder="시술을 선택하세요" />
+              <SelectValue placeholder={t("treatmentPlaceholder", locale)} />
             </SelectTrigger>
             <SelectContent className="max-h-72">
               {treatments.map((treatment) => (
                 <SelectItem key={treatment.name} value={treatment.name}>
                   <span className="truncate">
-                    {treatment.name} ({formatKRW(treatment.base_price)})
+                    {translateEntity(treatment.name, locale)} (
+                    {formatKRW(treatment.base_price)})
                   </span>
                 </SelectItem>
               ))}
@@ -172,7 +224,7 @@ export function TreatmentSelector() {
 
         <div className="space-y-2">
           <Label htmlFor="sessions" className="text-sm font-medium">
-            회차
+            {t("sessions", locale)}
           </Label>
           <input
             id="sessions"
@@ -180,26 +232,26 @@ export function TreatmentSelector() {
             min={1}
             max={99}
             value={sessions}
-            onChange={(e) =>
-              setSessions(Math.max(1, parseInt(e.target.value, 10) || 1))
-            }
+            onChange={(e) => handleSessionsChange(e.target.value)}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
         {selectedTreatment && (
           <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
-            <p className="text-sm text-slate-600">선택 시술 정가</p>
+            <p className="text-sm text-slate-600">{t("selectedPrice", locale)}</p>
             <p className="text-lg font-semibold text-slate-800">
               {formatKRW(selectedTreatment.base_price)}
               <span className="ml-1 text-sm font-normal text-slate-500">
-                / 1회
+                {t("perSession", locale)}
               </span>
             </p>
             <p className="mt-1 text-sm text-slate-500">
-              {sessions}회 기준 정가:{" "}
+              {sessions}
+              {t("sessionsTotal", locale)}:{" "}
               {formatKRW(selectedTreatment.base_price * sessions)}
             </p>
+            <p className="mt-2 text-xs text-blue-600">{t("livePreviewHint", locale)}</p>
           </div>
         )}
 
@@ -212,23 +264,13 @@ export function TreatmentSelector() {
           />
           <div className="min-w-0 space-y-0.5">
             <Label htmlFor="first-visit" className="cursor-pointer">
-              첫 방문 (First Visit)
+              {t("firstVisit", locale)}
             </Label>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              미번들 최저가 시술 1회에 50% 추가 할인이 적용됩니다.
+              {t("firstVisitDesc", locale)}
             </p>
           </div>
         </div>
-
-        <Button
-          className="w-full gap-2"
-          size="lg"
-          onClick={handleAddToCart}
-          disabled={!selectedTreatment}
-        >
-          <Plus className="h-4 w-4" />
-          장바구니 담기
-        </Button>
       </CardContent>
     </Card>
   );

@@ -23,8 +23,16 @@ export interface CartItem {
 }
 
 export interface DiscountLine {
+  id: "bundle" | "session" | "volume" | "first_visit" | "base_items";
   label: string;
   amount: number;
+  params?: Record<string, string | number>;
+}
+
+export interface BaseItemLine {
+  id: string;
+  name: string;
+  price: number;
 }
 
 export interface PriceBreakdown {
@@ -49,6 +57,12 @@ export interface PriceBreakdown {
   unbundledTotal: number;
   firstVisitDiscount: number;
   firstVisitItemName: string | null;
+  treatmentSupplyAmount: number;
+  baseItems: BaseItemLine[];
+  baseItemsOriginalTotal: number;
+  baseItemsDiscount: number;
+  baseItemsTotal: number;
+  baseItemsDiscountApplied: boolean;
   supplyAmount: number;
   vat: number;
   finalTotal: number;

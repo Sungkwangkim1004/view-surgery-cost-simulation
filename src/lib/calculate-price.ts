@@ -1,3 +1,9 @@
+import {
+  BASE_ITEM_NAMES,
+  BASE_ITEM_PRICE,
+  BASE_ITEMS_DISCOUNT_RATE,
+  BASE_ITEMS_DISCOUNT_THRESHOLD,
+} from "@/lib/base-items";
 import { bundlesDB } from "@/lib/data";
 import type { CartItem, DiscountLine, PriceBreakdown } from "@/types";
 
@@ -38,6 +44,29 @@ function getOriginalTotal(cartItems: CartItem[]): number {
   );
 }
 
+function emptyBreakdown(): PriceBreakdown {
+  return {
+    cartItems: [],
+    originalTotal: 0,
+    bundleMatches: [],
+    unbundledItems: [],
+    discountLines: [],
+    bundleTotal: 0,
+    unbundledTotal: 0,
+    firstVisitDiscount: 0,
+    firstVisitItemName: null,
+    treatmentSupplyAmount: 0,
+    baseItems: [],
+    baseItemsOriginalTotal: 0,
+    baseItemsDiscount: 0,
+    baseItemsTotal: 0,
+    baseItemsDiscountApplied: false,
+    supplyAmount: 0,
+    vat: 0,
+    finalTotal: 0,
+  };
+}
+
 function matchBundles(workingItems: WorkingItem[]) {
   const bundleMatches: PriceBreakdown["bundleMatches"] = [];
   const discountLines: DiscountLine[] = [];
@@ -75,8 +104,10 @@ function matchBundles(workingItems: WorkingItem[]) {
       });
 
       discountLines.push({
+        id: "bundle",
         label: `✔️ ${bundle.name} 구성 성공`,
         amount: savedAmount,
+        params: { name: bundle.name },
       });
 
       bundleTotal += bundle.price;
@@ -88,6 +119,30 @@ function matchBundles(workingItems: WorkingItem[]) {
   return { bundleMatches, discountLines, bundleTotal };
 }
 
+function calculateBaseItems(originalTotal: number) {
+  const baseItems = BASE_ITEM_NAMES.map((name, index) => ({
+    id: `base-${index}`,
+    name,
+    price: BASE_ITEM_PRICE,
+  }));
+
+  const baseItemsOriginalTotal = BASE_ITEM_PRICE * BASE_ITEM_NAMES.length;
+  const baseItemsDiscountApplied =
+    originalTotal >= BASE_ITEMS_DISCOUNT_THRESHOLD;
+  const baseItemsDiscount = baseItemsDiscountApplied
+    ? Math.round(baseItemsOriginalTotal * BASE_ITEMS_DISCOUNT_RATE)
+    : 0;
+  const baseItemsTotal = baseItemsOriginalTotal - baseItemsDiscount;
+
+  return {
+    baseItems,
+    baseItemsOriginalTotal,
+    baseItemsDiscount,
+    baseItemsTotal,
+    baseItemsDiscountApplied,
+  };
+}
+
 export function calculatePrice(
   cartItems: CartItem[],
   isFirstVisit: boolean
@@ -95,20 +150,7 @@ export function calculatePrice(
   const originalTotal = getOriginalTotal(cartItems);
 
   if (cartItems.length === 0) {
-    return {
-      cartItems: [],
-      originalTotal: 0,
-      bundleMatches: [],
-      unbundledItems: [],
-      discountLines: [],
-      bundleTotal: 0,
-      unbundledTotal: 0,
-      firstVisitDiscount: 0,
-      firstVisitItemName: null,
-      supplyAmount: 0,
-      vat: 0,
-      finalTotal: 0,
-    };
+    return emptyBreakdown();
   }
 
   const workingItems = cloneWorkingItems(cartItems);
@@ -144,13 +186,23 @@ export function calculatePrice(
   if (sessionDiscountTotal > 0) {
     const maxSessions = Math.max(...remainingItems.map((i) => i.sessions));
     let sessionLabel = "다회차 할인";
-    if (maxSessions >= 10) sessionLabel = "다회차 할인 (10회 이상 30%)";
-    else if (maxSessions >= 5) sessionLabel = "다회차 할인 (5~9회 20%)";
-    else if (maxSessions >= 3) sessionLabel = "다회차 할인 (3~4회 15%)";
+    let sessionTier = "3-4";
+    if (maxSessions >= 10) {
+      sessionLabel = "다회차 할인 (10회 이상 30%)";
+      sessionTier = "10+";
+    } else if (maxSessions >= 5) {
+      sessionLabel = "다회차 할인 (5~9회 20%)";
+      sessionTier = "5-9";
+    } else if (maxSessions >= 3) {
+      sessionLabel = "다회차 할인 (3~4회 15%)";
+      sessionTier = "3-4";
+    }
 
     discountLines.push({
+      id: "session",
       label: `✔️ ${sessionLabel}`,
       amount: sessionDiscountTotal,
+      params: { tier: sessionTier },
     });
   }
 
@@ -166,8 +218,10 @@ export function calculatePrice(
           : "교차 카테고리 볼륨 할인 (2종 5%)";
 
     discountLines.push({
+      id: "volume",
       label: `✔️ ${volumeLabel}`,
       amount: volumeDiscount,
+      params: { count: uniqueItemCount },
     });
   }
 
@@ -184,14 +238,35 @@ export function calculatePrice(
     firstVisitItemName = cheapest.treatmentName;
 
     discountLines.push({
+      id: "first_visit",
       label: `✔️ 첫 방문 로스리더 (${cheapest.treatmentName} 1회 50%)`,
       amount: firstVisitDiscount,
+      params: { treatment: cheapest.treatmentName },
     });
 
     unbundledTotal -= firstVisitDiscount;
   }
 
-  const supplyAmount = bundleTotal + unbundledTotal;
+  const treatmentSupplyAmount = bundleTotal + unbundledTotal;
+
+  const {
+    baseItems,
+    baseItemsOriginalTotal,
+    baseItemsDiscount,
+    baseItemsTotal,
+    baseItemsDiscountApplied,
+  } = calculateBaseItems(originalTotal);
+
+  if (baseItemsDiscount > 0) {
+    discountLines.push({
+      id: "base_items",
+      label: "✔️ 기본항목 할인 (총 견적 1천만원 이상 30%)",
+      amount: baseItemsDiscount,
+      params: { threshold: BASE_ITEMS_DISCOUNT_THRESHOLD },
+    });
+  }
+
+  const supplyAmount = treatmentSupplyAmount + baseItemsTotal;
   const vat = Math.round(supplyAmount * 0.1);
   const finalTotal = supplyAmount + vat;
 
@@ -205,6 +280,12 @@ export function calculatePrice(
     unbundledTotal,
     firstVisitDiscount,
     firstVisitItemName,
+    treatmentSupplyAmount,
+    baseItems,
+    baseItemsOriginalTotal,
+    baseItemsDiscount,
+    baseItemsTotal,
+    baseItemsDiscountApplied,
     supplyAmount,
     vat,
     finalTotal,
